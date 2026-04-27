@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Jornalista Toolkit PRO</title>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #111;
+  color: #eee;
+  margin: 0;
+}
+
+header {
+  background: #1f1f1f;
+  padding: 15px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  padding: 15px;
+}
+
+.box {
+  background: #1c1c1c;
+  padding: 15px;
+  border-radius: 10px;
+}
+
+textarea, input {
+  width: 100%;
+  margin-top: 10px;
+  background: #222;
+  color: #fff;
+  border: none;
+  padding: 10px;
+  border-radius: 5px;
+}
+
+button {
+  margin-top: 10px;
+  padding: 10px;
+  width: 100%;
+  border: none;
+  border-radius: 5px;
+  background: #ff4500;
+  color: white;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #ff5e1f;
+}
+
+ul {
+  padding-left: 20px;
+}
+
+li {
+  margin-top: 5px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.small-btn {
+  width: auto;
+  padding: 5px 8px;
+  margin-left: 5px;
+}
+
+.status {
+  color: #00ff99;
+  font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+<header>📰 Jornalista Toolkit PRO</header>
+
+<div class="container">
+
+<!-- PAUTAS -->
+<div class="box">
+  <h3>Pautas</h3>
+  <input type="text" id="pautaInput" placeholder="Nova pauta...">
+  <button onclick="addPauta()">Adicionar</button>
+  <ul id="pautaList"></ul>
+</div>
+
+<!-- ANOTAÇÕES -->
+<div class="box">
+  <h3>Anotações</h3>
+  <textarea id="notes" rows="8"></textarea>
+  <button onclick="saveNotes()">Salvar</button>
+  <button onclick="exportText()">Exportar .txt</button>
+  <button onclick="clearNotes()">Limpar</button>
+  <p id="saveStatus" class="status"></p>
+</div>
+
+<!-- TEXTO / MÉTRICAS -->
+<div class="box">
+  <h3>Texto & Métricas</h3>
+  <textarea id="textCounter" rows="6"></textarea>
+  <button onclick="analyzeText()">Analisar</button>
+  <p id="textStats"></p>
+</div>
+
+<!-- GERADOR DE LEAD -->
+<div class="box">
+  <h3>Gerador de Lead</h3>
+  <input type="text" id="titleInput" placeholder="Título da matéria">
+  <textarea id="leadInput" rows="4" placeholder="Informações principais..."></textarea>
+  <button onclick="generateLead()">Gerar Lead</button>
+  <p id="leadOutput"></p>
+</div>
+
+<!-- FONTES -->
+<div class="box">
+  <h3>Banco de Fontes</h3>
+  <input type="text" id="sourceName" placeholder="Nome">
+  <input type="text" id="sourceContact" placeholder="Contato">
+  <button onclick="addSource()">Adicionar</button>
+  <ul id="sourceList"></ul>
+</div>
+
+<!-- CHECKLIST -->
+<div class="box">
+  <h3>Checklist</h3>
+  <label><input type="checkbox"> Revisado</label><br>
+  <label><input type="checkbox"> Fonte verificada</label><br>
+  <label><input type="checkbox"> Título otimizado</label><br>
+  <label><input type="checkbox"> Imagens inseridas</label><br>
+</div>
+
+</div>
+
+<script>
+// ===== PAUTAS =====
+let pautas = JSON.parse(localStorage.getItem("pautas")) || [];
+
+function renderPautas() {
+  const list = document.getElementById("pautaList");
+  list.innerHTML = "";
+  pautas.forEach((p, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `${p}
+      <button class="small-btn" onclick="deletePauta(${i})">X</button>`;
+    list.appendChild(li);
+  });
+}
+
+function addPauta() {
+  const input = document.getElementById("pautaInput");
+  if (input.value.trim()) {
+    pautas.push(input.value);
+    localStorage.setItem("pautas", JSON.stringify(pautas));
+    input.value = "";
+    renderPautas();
+  }
+}
+
+function deletePauta(i) {
+  pautas.splice(i, 1);
+  localStorage.setItem("pautas", JSON.stringify(pautas));
+  renderPautas();
+}
+
+// ===== ANOTAÇÕES =====
+function saveNotes() {
+  const notes = document.getElementById("notes").value;
+  localStorage.setItem("notes", notes);
+
+  const status = document.getElementById("saveStatus");
+  status.innerText = "Salvo ✔";
+  setTimeout(() => status.innerText = "", 2000);
+}
+
+function clearNotes() {
+  document.getElementById("notes").value = "";
+  localStorage.removeItem("notes");
+}
+
+function exportText() {
+  const text = document.getElementById("notes").value;
+  const blob = new Blob([text], { type: "text/plain" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "materia.txt";
+  a.click();
+}
+
+// autosave
+document.addEventListener("DOMContentLoaded", () => {
+  const notes = document.getElementById("notes");
+  notes.value = localStorage.getItem("notes") || "";
+
+  notes.addEventListener("input", () => {
+    localStorage.setItem("notes", notes.value);
+  });
+
+  renderPautas();
+  renderSources();
+});
+
+// ===== TEXTO =====
+function analyzeText() {
+  const text = document.getElementById("textCounter").value;
+  const words = text.trim().split(/\s+/).filter(w => w).length;
+  const chars = text.length;
+  const time = Math.ceil(words / 200);
+
+  document.getElementById("textStats").innerText =
+    `Palavras: ${words} | Caracteres: ${chars} | Leitura: ${time} min`;
+}
+
+// ===== LEAD =====
+function generateLead() {
+  const title = document.getElementById("titleInput").value;
+  const info = document.getElementById("leadInput").value;
+
+  document.getElementById("leadOutput").innerText =
+    `${title} — ${info}.`;
+}
+
+// ===== FONTES =====
+let sources = JSON.parse(localStorage.getItem("sources")) || [];
+
+function renderSources() {
+  const list = document.getElementById("sourceList");
+  list.innerHTML = "";
+  sources.forEach((s, i) => {
+    const li = document.createElement("li");
+    li.innerHTML = `${s.name} (${s.contact})
+      <button class="small-btn" onclick="deleteSource(${i})">X</button>`;
+    list.appendChild(li);
+  });
+}
+
+function addSource() {
+  const name = document.getElementById("sourceName").value;
+  const contact = document.getElementById("sourceContact").value;
+
+  if (name && contact) {
+    sources.push({ name, contact });
+    localStorage.setItem("sources", JSON.stringify(sources));
+    renderSources();
+  }
+}
+
+function deleteSource(i) {
+  sources.splice(i, 1);
+  localStorage.setItem("sources", JSON.stringify(sources));
+  renderSources();
+}
+</script>
+
+</body>
+</html>
